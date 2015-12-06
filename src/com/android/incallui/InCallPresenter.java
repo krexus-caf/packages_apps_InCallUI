@@ -1251,7 +1251,7 @@ public class InCallPresenter implements CallList.Listener,
      * call.
      */
     public static boolean isCallWithNoValidAccounts(Call call) {
-        if (call != null && !isEmergencyCall(call)) {
+        if (call != null && !call.isEmergencyCall()) {
             Bundle extras = call.getIntentExtras();
 
             if (extras == null) {
@@ -1268,14 +1268,6 @@ public class InCallPresenter implements CallList.Listener,
             }
         }
         return false;
-    }
-
-    private static boolean isEmergencyCall(Call call) {
-        final Uri handle = call.getHandle();
-        if (handle == null) {
-            return false;
-        }
-        return PhoneNumberUtils.isEmergencyNumber(handle.getSchemeSpecificPart());
     }
 
     /**
