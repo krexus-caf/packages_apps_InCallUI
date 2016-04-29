@@ -489,6 +489,17 @@ public class InCallPresenter implements CallList.Listener,
         // call.
         setBoundAndWaitingForOutgoingCall(false, null);
         call.registerCallback(mCallCallback);
+
+       final Call incall = mCallList.getCallByTelecommCall(call);
+       if (incall == null) {
+           Log.w(this, "Call not found in call list: " + incall);
+           return;
+       }
+
+       for (InCallDetailsListener listener : mDetailsListeners) {
+           //Call is just setup. So, invoke details changed to process pending details (if any)
+           listener.onDetailsChanged(incall, call.getDetails());
+       }
     }
 
     /**
@@ -828,11 +839,12 @@ public class InCallPresenter implements CallList.Listener,
         }
 
         Call call = mCallList.getIncomingCall();
-        if (call != null) {
+        if (call != null && !InCallLowBatteryListener.getInstance().
+                handleAnswerIncomingCall(call, videoState)) {
             TelecomAdapter.getInstance().answerCall(call.getId(), videoState);
-            if (CallUtils.isVideoCall(videoState)) {
-                showInCall(false, false/* newOutgoingCall */);
-            }
+        }
+        if (call != null && CallUtils.isVideoCall(videoState)) {
+            showInCall(false, false/* newOutgoingCall */);
         }
     }
 
@@ -1317,6 +1329,17 @@ public class InCallPresenter implements CallList.Listener,
         showCallUi |= (newState == InCallState.INCALL) &&
                 (mInCallState == InCallState.WAITING_FOR_ACCOUNT) && (mCallList.hasLiveCall() ||
                 (mCallList.getBackgroundCall() != null));
+
+        // Show Call UI when user tries to dial second Video call when UE is under low battery so
+        // that user can take informed decision to contiue as video call or convert to voice call
+        if (CallUtils.isVideoCall(mCallList.getActiveCall())) {
+            if (InCallState.PENDING_OUTGOING == newState) {
+                Call call = mCallList.getPendingOutgoingCall();
+                showCallUi |= CallUtils.isVideoCall(call) &&
+                        InCallLowBatteryListener.getInstance().isLowBattery(
+                        call.getTelecommCall().getDetails()) && mainUiNotVisible;
+            }
+        }
 
         // The only time that we have an instance of mInCallActivity and it isn't started is
         // when it is being destroyed.  In that case, lets avoid bringing up another instance of

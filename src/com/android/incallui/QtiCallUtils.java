@@ -376,4 +376,12 @@ public class QtiCallUtils {
                 (call.can(android.telecom.Call.Details.CAPABILITY_SUPPORTS_VT_LOCAL_RX) &&
                 call.can(android.telecom.Call.Details.CAPABILITY_SUPPORTS_VT_REMOTE_TX)));
     }
+
+    public static void answerCall(Call call, int videoState) {
+        if (!InCallLowBatteryListener.getInstance().handleAnswerIncomingCall(call, videoState)) {
+            Log.d(LOG_TAG, "onAnswer (answerCall) callId: " + call.getId() +
+                    " videoState: " + videoState);
+            TelecomAdapter.getInstance().answerCall(call.getId(), videoState);
+        }
+    }
 }

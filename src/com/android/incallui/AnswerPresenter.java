@@ -331,8 +331,7 @@ public class AnswerPresenter extends Presenter<AnswerPresenter.AnswerUi>
             Log.d(this, "onAnswer (upgradeCall) mCallId=" + mCallId + " videoState=" + videoState);
             InCallPresenter.getInstance().acceptUpgradeRequest(videoState, context);
         } else {
-            Log.d(this, "onAnswer (answerCall) mCallId=" + mCallId + " videoState=" + videoState);
-            TelecomAdapter.getInstance().answerCall(mCall[phoneId].getId(), videoState);
+            QtiCallUtils.answerCall(mCall[phoneId], videoState);
         }
     }
 
