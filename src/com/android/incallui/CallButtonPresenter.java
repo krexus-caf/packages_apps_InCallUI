@@ -491,7 +491,9 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         ui.showButton(BUTTON_DIALPAD, !isVideo || useExt || useCustomVideoUi);
         ui.showButton(BUTTON_MERGE, showMerge);
         ui.showButton(BUTTON_ADD_PARTICIPANT, showAddParticipant);
-        ui.showButton(BUTTON_RECORD, showRecord);
+        if (ui.getContext().getResources().getBoolean(R.bool.enable_call_record)) {
+            ui.showButton(BUTTON_RECORD, showRecord);
+        }
         if (ui.getContext().getResources().getBoolean(
                 R.bool.config_enable_enhance_video_call_ui)) {
             Log.v(this, "Add three new buttons");
