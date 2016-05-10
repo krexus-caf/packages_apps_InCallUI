@@ -275,6 +275,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
         InCallVideoCallCallbackNotifier.getInstance().removeSurfaceChangeListener(this);
         InCallVideoCallCallbackNotifier.getInstance().removeVideoEventListener(this);
         InCallUiStateNotifier.getInstance().removeListener(this);
+        cancelAutoFullScreen();
     }
 
     /**
@@ -1247,6 +1248,9 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
         }
         Log.v(this, "cancelAutoFullScreen : cancelling pending");
         mAutoFullScreenPending = false;
+        if (mHandler != null) {
+            mHandler.removeCallbacks(mAutoFullscreenRunnable);
+        }
     }
 
     private static boolean isAudioRouteEnabled(int audioRoute, int audioRouteMask) {
