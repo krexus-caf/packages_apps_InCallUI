@@ -873,13 +873,6 @@ public class VideoCallFragment extends BaseFragment<VideoCallPresenter,
         Log.d(this, "setSurfaceSizeAndTranslation: Size=" + size + "IsLayoutComplete=" +
                 mIsLayoutComplete + "IsLandscape=" + mIsLandscape);
 
-        // It is only possible to center the display view if layout of the views has completed.
-        // It is only after layout is complete that the dimensions of the Call Card has been
-        // established, which is a prerequisite to centering the view.
-        // Incoming video calls will center the view
-        if (mIsLayoutComplete) {
-            centerDisplayView(textureView);
-        }
     }
 
     private void enableScreenTimeout(boolean enable) {
