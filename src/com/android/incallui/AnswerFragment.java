@@ -60,6 +60,10 @@ public class AnswerFragment extends BaseFragment<AnswerPresenter, AnswerPresente
     public static final int TARGET_SET_FOR_QTI_VIDEO_RECEIVE_ACCEPT_REJECT_REQUEST = 1006;
     public static final int TARGET_SET_FOR_QTI_AUDIO_WITHOUT_SMS = 1007;
     public static final int TARGET_SET_FOR_QTI_AUDIO_WITH_SMS = 1008;
+    public static final int TARGET_SET_FOR_QTI_VIDEO_TRANSMIT_ACCEPT_REJECT_WITHOUT_SMS = 1009;
+    public static final int TARGET_SET_FOR_QTI_VIDEO_TRANSMIT_ACCEPT_REJECT_WITH_SMS = 1010;
+    public static final int TARGET_SET_FOR_QTI_VIDEO_RECEIVE_ACCEPT_REJECT_WITHOUT_SMS = 1011;
+    public static final int TARGET_SET_FOR_QTI_VIDEO_RECEIVE_ACCEPT_REJECT_WITH_SMS = 1012;
 
     /**
      * The popup showing the list of canned responses.
@@ -205,6 +209,42 @@ public class AnswerFragment extends BaseFragment<AnswerPresenter, AnswerPresente
                         R.array.qti_incoming_call_widget_video_with_sms_target_descriptions;
                 directionDescriptionsResourceId =
                         R.array.qti_incoming_call_widget_video_with_sms_direction_descriptions;
+                handleDrawableResourceId = R.drawable.ic_incall_video_handle;
+                break;
+            case TARGET_SET_FOR_QTI_VIDEO_TRANSMIT_ACCEPT_REJECT_WITHOUT_SMS:
+                targetResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_without_sms_targets;
+                targetDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_without_sms_target_descriptions;
+                directionDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_without_sms_direction_descriptions;
+                handleDrawableResourceId = R.drawable.ic_incall_video_handle;
+                break;
+            case TARGET_SET_FOR_QTI_VIDEO_TRANSMIT_ACCEPT_REJECT_WITH_SMS:
+                targetResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_with_sms_targets;
+                targetDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_with_sms_target_descriptions;
+                directionDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_tx_video_with_sms_direction_descriptions;
+                handleDrawableResourceId = R.drawable.ic_incall_video_handle;
+                break;
+            case TARGET_SET_FOR_QTI_VIDEO_RECEIVE_ACCEPT_REJECT_WITHOUT_SMS:
+                targetResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_without_sms_targets;
+                targetDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_without_sms_target_descriptions;
+                directionDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_without_sms_direction_descriptions;
+                handleDrawableResourceId = R.drawable.ic_incall_video_handle;
+                break;
+            case TARGET_SET_FOR_QTI_VIDEO_RECEIVE_ACCEPT_REJECT_WITH_SMS:
+                targetResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_with_sms_targets;
+                targetDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_with_sms_target_descriptions;
+                directionDescriptionsResourceId =
+                    R.array.qti_incoming_call_widget_rx_video_with_sms_direction_descriptions;
                 handleDrawableResourceId = R.drawable.ic_incall_video_handle;
                 break;
             case TARGET_SET_FOR_QTI_VIDEO_ACCEPT_REJECT_REQUEST:

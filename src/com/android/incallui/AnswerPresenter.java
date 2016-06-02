@@ -414,11 +414,11 @@ public class AnswerPresenter extends Presenter<AnswerPresenter.AnswerUi>
         if (call.isVideoCall(getUi().getContext())) {
             if (withSms) {
                 getUi().showTargets(QtiCallUtils.getIncomingCallAnswerOptions(
-                        getUi().getContext(), withSms));
+                        getUi().getContext(), call.getVideoState(), withSms));
                 getUi().configureMessageDialog(textMsgs);
             } else {
                 getUi().showTargets(QtiCallUtils.getIncomingCallAnswerOptions(
-                        getUi().getContext(), withSms));
+                        getUi().getContext(), call.getVideoState(), withSms));
             }
         } else if (isCallDeflectSupported()) {
             /**
