@@ -44,6 +44,10 @@ public class CallUtils {
                 || VideoProfile.isReceptionEnabled(videoState);
     }
 
+    public static boolean isBidirectionalVideoCall(int videoState) {
+        return VideoProfile.isBidirectional(videoState);
+    }
+
     public static boolean isIncomingVideoCall(Call call) {
         if (!CallUtils.isVideoCall(call)) {
             return false;

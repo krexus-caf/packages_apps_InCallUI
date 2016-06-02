@@ -32,9 +32,13 @@ package com.android.incallui;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnDismissListener;
+import android.content.DialogInterface.OnKeyListener;
 import android.os.Bundle;
+import android.telecom.VideoProfile;
+import android.view.KeyEvent;
 import android.view.WindowManager;
 
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -52,7 +56,8 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
     private CallList mCallList = null;
     private AlertDialog mAlert = null;
     private List <Call> mLowBatteryCalls = new CopyOnWriteArrayList<>();
-
+    // Holds TRUE if there is a user action to answer low battery video call as video else FALSE
+    private boolean mIsAnswered = false;
     /**
      * Private constructor. Must use getInstance() to get this singleton.
      */
@@ -85,6 +90,7 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
         InCallPresenter.getInstance().removeDetailsListener(this);
         InCallPresenter.getInstance().removeInCallUiListener(this);
         mPrimaryCallTracker = null;
+        mIsAnswered = false;
     }
 
      /**
@@ -102,8 +108,12 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
      */
     @Override
     public void onIncomingCall(Call call) {
-        //if low battery dialog is already visible to user, dismiss it
+        mIsAnswered = false;
+        // if low battery dialog is already visible to user, dismiss it
         dismissPendingDialogs();
+        /* On receiving MT call, disconnect pending MO low battery video call
+           that is waiting for user input */
+        maybeDisconnectPendingMoCall(mCallList.getPendingOutgoingCall());
     }
 
     /**
@@ -129,13 +139,11 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
      */
     @Override
     public void onDisconnect(Call call) {
-        Log.i(this, "onDisconnect call: " + call);
+        Log.d(this, "onDisconnect call: " + call);
         updateCallInMap(call);
 
         //if low battery dialog is visible to user, dismiss it
-        if (mPrimaryCallTracker.isPrimaryCall(call)) {
-            dismissPendingDialogs();
-        }
+        dismissPendingDialogs();
     }
 
     /**
@@ -146,19 +154,80 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
     @Override
     public void onUiShowing(boolean showing) {
         Call call = mPrimaryCallTracker.getPrimaryCall();
-        Log.i(this, "onUiShowing showing: " + showing + "call = " + call);
+        Log.d(this, "onUiShowing showing: " + showing + " call = " + call +
+                " mIsAnswered = " + mIsAnswered);
 
-        if (!showing || call == null) {
+        if (call == null) {
             return;
         }
 
-        /*
-         * There can be chances to miss display of low battery alert dialog
-         * to user since incallactivity may be null. Eg of such a use-case is
-         * accepting Video call from heads-up notification. So, when incall
-         * experience is showing, handle missed low battery alert indications (if any)
-         */
+       if (!showing) {
+           if (InCallPresenter.getInstance().isChangingConfigurations()) {
+                handleConfigurationChange(call);
+            }
+            return;
+        }
+
+        boolean isUnAnsweredMtCall = CallUtils.isIncomingVideoCall(call) && !mIsAnswered;
+        // Low battery handling for MT video calls kicks-in only after user decides to
+        // answer the call as Video. So, do not process unanswered incoming video call.
+        if (isUnAnsweredMtCall) {
+            return;
+        }
+
         maybeProcessLowBatteryIndication(call, call.getTelecommCall().getDetails());
+    }
+
+    /**
+     * When call is answered, this API checks to see if UE is under low battery or not
+     * and accordingly processes the low battery video call and returns TRUE if
+     * user action to answer the call is handled by this API else FALSE.
+     *
+     * @param call The call that is being answered
+     * @param fromHUN TRUE if call is answered from Heads-Up Notification (HUN) else FALSE
+     */
+    public boolean handleAnswerIncomingCall(Call call, int videoState) {
+        Log.d(this, "handleAnswerIncomingCall = " + call + " videoState = " + videoState);
+        if (call == null) {
+            return false;
+        }
+
+        final android.telecom.Call.Details details = call.getTelecommCall().getDetails();
+
+        if (!mPrimaryCallTracker.isPrimaryCall(call) ||
+                !(CallUtils.isVideoCall(call) && isLowBattery(details)
+                && CallUtils.isBidirectionalVideoCall(videoState))) {
+           //return false if low battery MT VT call isn't accepted as Video
+           return false;
+        }
+
+        //There is a user action to answer low battery MT Video call as Video
+        mIsAnswered = true;
+        maybeProcessLowBatteryIndication(call, details);
+        return true;
+    }
+
+    /**
+     * This API handles configuration changes done on low battery video call
+     *
+     * @param call The call on which configuration changes happened
+     */
+    private void handleConfigurationChange(Call call) {
+        Log.d(this, "handleConfigurationChange Call = " + call);
+        if (call == null || !mPrimaryCallTracker.isPrimaryCall(call)) {
+           return;
+        }
+
+        /* If UE orientation changes with low battery dialog showing, then remove
+           the call from lowbatterymap to ensure that the dialog will be shown to
+           user when the InCallActivity is recreated */
+        if (isLowBatteryDialogShowing()) {
+            dismissPendingDialogs();
+            if (mLowBatteryCalls.contains(call)) {
+                Log.d(this, "remove the call from map due to orientation change");
+                mLowBatteryCalls.remove(call);
+            }
+        }
     }
 
     /**
@@ -175,35 +244,65 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
             Log.d(this," onDetailsChanged: call is null/Details not for primary call");
             return;
         }
+        /* Low Battery handling for MT Video call kicks in only when user decides
+           to answer the call as Video call so ignore the incoming video call
+           processing here for now */
+       if (CallUtils.isIncomingVideoCall(call)) {
+            return;
+       }
 
         maybeProcessLowBatteryIndication(call, details);
+    }
+
+    /**
+      * disconnects pending MO video call that is waiting for user confirmation on
+      * low battery dialog
+      * @param call The probable call that may need to be disconnected
+      **/
+    private void maybeDisconnectPendingMoCall(Call call) {
+        if (call == null) {
+            return;
+        }
+
+        if (call.getState() == Call.State.CONNECTING && CallUtils.isVideoCall(call)
+                && isLowBattery(call.getTelecommCall().getDetails())) {
+            // dismiss the low battery dialog that is waiting for user input
+            dismissPendingDialogs();
+
+            String callId = call.getId();
+            Log.d(this, "disconnect pending MO call");
+            TelecomAdapter.getInstance().disconnectCall(callId);
+        }
+    }
+
+    public boolean isLowBattery(android.telecom.Call.Details details) {
+        final Bundle extras =  (details != null) ? details.getExtras() : null;
+        final boolean isLowBattery = (extras != null) ? extras.getBoolean(
+                QtiCallConstants.LOW_BATTERY_EXTRA_KEY, false) : false;
+        Log.d(this, "isLowBattery : " + isLowBattery);
+        return isLowBattery;
     }
 
     private void maybeProcessLowBatteryIndication(Call call,
             android.telecom.Call.Details details) {
 
-        final Bundle extras =  (details != null) ? details.getExtras() : null;
-        final boolean isLowBattery = (extras != null) ? extras.getBoolean(
-                QtiCallConstants.LOW_BATTERY_EXTRA_KEY, false) : false;
-        Log.i(this, "maybeProcessLowBatteryIndication: isLowBattery : " + isLowBattery);
+        if (!CallUtils.isVideoCall(call)) {
+            return;
+        }
 
-        if (isLowBattery && updateCallInMap(call)) {
+        if (isLowBattery(details) && updateCallInMap(call)) {
             processLowBatteryIndication(call);
         }
     }
 
     /*
-     * processes the low battery indication for an
-     * unpaused active video call
+     * processes the low battery indication for video call
      */
     private void processLowBatteryIndication(Call call) {
-        Log.i(this, "processLowBatteryIndication call: " + call);
-        if (CallUtils.isActiveUnPausedVideoCall(call)) {
-            Log.i(this, "is an active unpaused video call");
-            //if low battery dialog is already visible to user, dismiss it
-            dismissPendingDialogs();
-            displayLowBatteryAlert(call);
-        }
+        Log.d(this, "processLowBatteryIndication call: " + call);
+        //if low battery dialog is already visible to user, dismiss it
+        dismissPendingDialogs();
+        displayLowBatteryAlert(call);
     }
 
     /*
@@ -230,12 +329,12 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
              */
             Log.i(this, "incallactivity is null");
             return false;
-        } else if (CallUtils.isActiveUnPausedVideoCall(call) && !isPresent
+        } else if (CallUtils.isVideoCall(call) && !isPresent
                 && call.getParentId() == null) {
             /*
              * call will be added to call map only if below conditions are satisfied:
              * 1. call is not a child call
-             * 2. call is a unpaused active video call
+             * 2. call is a video call
              * 3. low battery indication for that call is not yet processed
              */
             mLowBatteryCalls.add(call);
@@ -245,10 +344,16 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
     }
 
     /*
-     * This method displays either of below alert dialog when UE is in low battery
-     * 1. hangup alert dialog in absence of voice capabilities
-     * 2. downgrade to voice call alert dialog in the presence of voice
-     *    capabilities
+     * This method displays one of below alert dialogs when UE is in low battery
+     * For Active Video Calls:
+     *     1. hangup alert dialog in absence of voice capabilities
+     *     2. downgrade to voice call alert dialog in the presence of voice
+     *        capabilities
+     * For MT Video calls wherein user decided to accept the call as Video and for MO Video Calls:
+     *     1. alert dialog asking user confirmation to convert the video call to voice call or
+     *        to continue the call as video call
+     * For MO Video calls, seek user confirmation to continue the video call as is or convert the
+     * video call to voice call
      */
     private void displayLowBatteryAlert(final Call call) {
         final InCallActivity inCallActivity = InCallPresenter.getInstance().getActivity();
@@ -259,52 +364,114 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
 
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(inCallActivity);
         alertDialog.setTitle(R.string.low_battery);
-        alertDialog.setNegativeButton(R.string.low_battery_no, null);
         alertDialog.setOnDismissListener(new OnDismissListener() {
             @Override
             public void onDismiss(final DialogInterface dialog) {
-                Log.d(this, "displayLowBatteryAlert onDismiss");
-                mAlert = null;
+                Log.i(this, "displayLowBatteryAlert onDismiss");
+                //mAlert = null;
             }
         });
 
-        if (QtiCallUtils.hasVoiceCapabilities(call)) {
-            //active video call can be downgraded to voice
-            alertDialog.setMessage(R.string.low_battery_downgrade_to_voice_msg);
+        if (CallUtils.isIncomingVideoCall(call)) {
+            alertDialog.setNegativeButton(R.string.low_battery_convert, new OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                     Log.d(this, "displayLowBatteryAlert answer as Voice Call");
+                     TelecomAdapter.getInstance().answerCall(call.getId(),
+                             VideoProfile.STATE_AUDIO_ONLY);
+                }
+            });
+
+            alertDialog.setMessage(R.string.low_battery_msg);
             alertDialog.setPositiveButton(R.string.low_battery_yes, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                     Log.i(this, "displayLowBatteryAlert downgrading to voice call");
-                     QtiCallUtils.downgradeToVoiceCall(call);
+                     Log.d(this, "displayLowBatteryAlert answer as Video Call");
+                     TelecomAdapter.getInstance().answerCall(call.getId(),
+                             VideoProfile.STATE_BIDIRECTIONAL);
                 }
             });
-        } else {
-            /* video call doesn't have downgrade capabilities, so alert the user
-               with a hangup dialog*/
-            alertDialog.setMessage(R.string.low_battery_hangup_msg);
+        } else if (CallUtils.isOutgoingVideoCall(call)) {
+            alertDialog.setNegativeButton(R.string.low_battery_convert, new OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                     Log.d(this, "displayLowBatteryAlert place Voice Call");
+                      TelecomAdapter.getInstance().continueCallWithVideoState(
+                              call, VideoProfile.STATE_AUDIO_ONLY);
+                }
+            });
+
+            alertDialog.setMessage(R.string.low_battery_msg);
             alertDialog.setPositiveButton(R.string.low_battery_yes, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                     Log.i(this, "displayLowBatteryAlert hanging up the call: " + call);
-                     final String callId = call.getId();
-                     call.setState(Call.State.DISCONNECTING);
-                     CallList.getInstance().onUpdate(call);
-                     TelecomAdapter.getInstance().disconnectCall(callId);
+                     Log.d(this, "displayLowBatteryAlert place Video Call");
+                      TelecomAdapter.getInstance().continueCallWithVideoState(
+                              call, VideoProfile.STATE_BIDIRECTIONAL);
                 }
             });
+        } else if (CallUtils.isActiveUnPausedVideoCall(call)) {
+            if (QtiCallUtils.hasVoiceCapabilities(call)) {
+                //active video call can be downgraded to voice
+                alertDialog.setMessage(R.string.low_battery_msg);
+                alertDialog.setPositiveButton(R.string.low_battery_yes, null);
+                alertDialog.setNegativeButton(R.string.low_battery_convert, new OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.d(this, "displayLowBatteryAlert downgrading to voice call");
+                        QtiCallUtils.downgradeToVoiceCall(call);
+                    }
+                });
+            } else {
+                /* video call doesn't have downgrade capabilities, so alert the user
+                   with a hangup dialog*/
+                alertDialog.setMessage(R.string.low_battery_hangup_msg);
+                alertDialog.setNegativeButton(R.string.low_battery_no, null);
+                alertDialog.setPositiveButton(R.string.low_battery_yes, new OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.d(this, "displayLowBatteryAlert hanging up the call: " + call);
+                        final String callId = call.getId();
+                        call.setState(Call.State.DISCONNECTING);
+                        CallList.getInstance().onUpdate(call);
+                        TelecomAdapter.getInstance().disconnectCall(callId);
+                    }
+                });
+            }
         }
 
         mAlert = alertDialog.create();
+        mAlert.setOnKeyListener(new OnKeyListener() {
+            @Override
+            public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                Log.d(this, "on Alert displayLowBattery keyCode = " + keyCode);
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                   // On Back key press, disconnect pending MO low battery video call
+                   // that is waiting for user input
+                    maybeDisconnectPendingMoCall(call);
+                    return true;
+                }
+                return false;
+            }
+        });
         mAlert.setCanceledOnTouchOutside(false);
         mAlert.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         mAlert.show();
     }
 
     /*
-     * This method dismisses the low battery dialog
+     * This method returns true if dialog is showing else false
      */
-    private void dismissPendingDialogs() {
-        if (mAlert != null && mAlert.isShowing()) {
+    private boolean isLowBatteryDialogShowing() {
+        return mAlert != null && mAlert.isShowing();
+    }
+
+    /*
+     * This method dismisses the low battery dialog and
+     * returns true if dialog is dimissed else false
+     */
+    public void dismissPendingDialogs() {
+        if (isLowBatteryDialogShowing()) {
             mAlert.dismiss();
             mAlert = null;
         }

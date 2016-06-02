@@ -128,15 +128,17 @@
     <string name="session_modify_cause_downgrade_generic_error">Call downgraded due to generic error</string>
 
     <!-- Title for low battery alert dialogue -->
-    <string name="low_battery">Low Battery</string>
+    <string name="low_battery">Low Battery Warning</string>
     <!-- Yes option of the low battery alert dialog -->
     <string name="low_battery_yes">Yes</string>
-    <!-- No option of the low battery alert dialog -->
+    <!-- No option of the low battery alert dialog for active video calls -->
     <string name="low_battery_no">No</string>
-    <!-- Message text of the low battery alert dialog in cases when video call can be downgraded to voice call -->
-    <string name="low_battery_downgrade_to_voice_msg">Do you want to convert video call to voice call?</string>
     <!-- Message text of the low battery alert dialog in cases video call doesn't have downgrade capabilities -->
     <string name="low_battery_hangup_msg">Do you want to hangup the call?</string>
+    <!-- Message text of the low battery alert dialog for MO/MT video calls -->
+    <string name="low_battery_msg">Your battery level is below 15%. Do you want to continue with the video call or convert it to Voice call</string>
+    <!-- No option of the low battery alert dialog for MO/MT Video calls -->
+    <string name="low_battery_convert">Convert</string>
 
     <!-- Description of the call transfer related strings [CHAR LIMIT=NONE] -->
     <string name="qti_ims_transfer_num_error">Number not set. Provide the number via IMS settings and retry.</string>

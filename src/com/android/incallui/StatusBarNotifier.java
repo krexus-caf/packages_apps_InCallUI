@@ -540,6 +540,9 @@ public class StatusBarNotifier implements InCallPresenter.InCallStateListener,
         }
         Call call = callList.getIncomingCall();
         if (call == null) {
+            call = callList.getPendingOutgoingCall();
+        }
+        if (call == null) {
             call = callList.getOutgoingCall();
         }
         if (call == null) {
