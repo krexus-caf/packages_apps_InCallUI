@@ -306,6 +306,11 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
             //if call is a video call, send audio only modify request
             changeToVoiceClicked();
         }
+        if (QtiCallUtils.useCustomVideoUi(context)) {
+            InCallAudioManager.getInstance().onModifyCallClicked(mCall,
+                    CallUtils.isVideoCall(currVideoState) ?
+                    VideoProfile.STATE_AUDIO_ONLY : VideoProfile.STATE_BIDIRECTIONAL);
+        }
     }
 
     /**
