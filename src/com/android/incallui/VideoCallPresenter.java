@@ -553,7 +553,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
         }
 
         // Make sure we hide or show the video UI if needed.
-        showVideoUi(call.getVideoState(), call.getState());
+        showVideoUi(call.getVideoState(), call.getState(), call.isConferenceCall());
     }
 
     private void cleanupSurfaces() {
@@ -715,7 +715,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
            newVideoState = call.getModifyToVideoState();
         }
 
-        showVideoUi(newVideoState, call.getState());
+        showVideoUi(newVideoState, call.getState(), call.isConferenceCall());
 
         // Communicate the current camera to telephony and make a request for the camera
         // capabilities.
@@ -811,7 +811,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
     private void exitVideoMode() {
         Log.d(this, "exitVideoMode");
 
-        showVideoUi(VideoProfile.STATE_AUDIO_ONLY, Call.State.ACTIVE);
+        showVideoUi(VideoProfile.STATE_AUDIO_ONLY, Call.State.ACTIVE, false);
         enableCamera(mVideoCall, false);
         InCallPresenter.getInstance().setFullScreen(false);
 
@@ -826,7 +826,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
      * @param videoState The video state.
      * @param callState The call state.
      */
-    private void showVideoUi(int videoState, int callState) {
+    private void showVideoUi(int videoState, int callState, boolean isConf) {
         VideoCallUi ui = getUi();
         if (ui == null) {
             Log.e(this, "showVideoUi, VideoCallUi is null returning");
@@ -838,7 +838,9 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
                 + showOutgoingVideo);
         if (showIncomingVideo || showOutgoingVideo) {
             ui.showVideoViews(showOutgoingVideo, showIncomingVideo);
-
+            boolean hidePreview = shallHidePreview(isConf, videoState);
+            Log.v(this, "showVideoUi, hidePreview = " + hidePreview);
+            ui.showOutgoingVideoView(!hidePreview);
             if (VideoProfile.isReceptionEnabled(videoState)) {
                 loadProfilePhotoAsync();
             }
@@ -1435,6 +1437,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
         void cleanupSurfaces();
         ImageView getPreviewPhotoView();
         void adjustPreviewLocation(boolean shiftUp, int offset);
+        void showOutgoingVideoView(boolean show);
     }
 
     private void listenToCallUpdates(Call call) {
@@ -1486,5 +1489,14 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
 
     @Override
     public void onChildNumberChange() {
+    }
+
+    /**
+     * Hide preview window if it is a VT conference call
+     */
+    private boolean shallHidePreview(boolean isConf, int videoState) {
+        return VideoProfile.isBidirectional(videoState) && isConf
+                && QtiCallUtils.isConfigEnabled(mContext,
+                R.bool.config_hide_preview_in_vt_confcall);
     }
 }

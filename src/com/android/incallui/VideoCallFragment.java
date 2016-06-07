@@ -567,6 +567,12 @@ public class VideoCallFragment extends BaseFragment<VideoCallPresenter,
         }
     }
 
+    public void showOutgoingVideoView(boolean show) {
+        if (mPreviewVideoContainer != null) {
+            mPreviewVideoContainer.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        }
+    }
+
     /**
      * Hide all video views.
      */
