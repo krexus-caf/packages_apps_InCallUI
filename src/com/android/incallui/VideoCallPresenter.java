@@ -587,7 +587,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
         }
     }
 
-    private boolean isVideoMode() {
+    public static boolean isVideoMode() {
         return mIsVideoMode;
     }
 
