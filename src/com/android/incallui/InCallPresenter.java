@@ -1145,6 +1145,10 @@ public class InCallPresenter implements CallList.Listener,
      * @return {@code true} if in-call is now in fullscreen mode.
      */
     public boolean toggleFullscreenMode() {
+        if (!VideoCallPresenter.isVideoMode()) {
+            Log.d(this, "Ignore full screen mode toggle when not in video mode");
+            return mIsFullScreen;
+        }
         boolean isFullScreen = !mIsFullScreen;
         Log.v(this, "toggleFullscreenMode = " + isFullScreen);
         setFullScreen(isFullScreen);
