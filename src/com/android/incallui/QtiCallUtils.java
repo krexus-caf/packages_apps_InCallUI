@@ -384,4 +384,31 @@ public class QtiCallUtils {
             TelecomAdapter.getInstance().answerCall(call.getId(), videoState);
         }
     }
+
+    public static boolean isSessionModificationAllowed(Call call, Context context) {
+        /*
+         * 1. When useExt is false and custom UI is false, Do not show upgrade button
+              if current call is video call
+         * 2. When Custom UI is enabled, show upgrade button if voice call has video capabilities or
+              if video call has voice capabilities
+         * 3. For all other use cases, show upgrade button if call is having voice or
+              video capabilities
+         */
+        final int callState = call.getState();
+        if (!(callState == Call.State.ACTIVE || callState == Call.State.ONHOLD)) {
+            return false;
+        }
+
+        final boolean isVideoCall = CallUtils.isVideoCall(call);
+        if (useCustomVideoUi(context)) {
+            return (((!isVideoCall) && hasVideoCapabilities(call)) ||
+                    (isVideoCall && hasVoiceCapabilities(call)));
+        }
+
+        if (useExt(context)) {
+            return (hasVideoCapabilities(call) || hasVoiceCapabilities(call));
+        }
+
+        return !isVideoCall;
+    }
 }
