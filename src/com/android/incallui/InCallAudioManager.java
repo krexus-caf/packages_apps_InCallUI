@@ -147,8 +147,8 @@ public class InCallAudioManager {
         final int currentAudioMode = AudioModeProvider.getInstance().getAudioMode();
         Log.v(LOG_TAG, "enableEarpiece: Current audio mode is - " + currentAudioMode);
 
-        if (QtiCallUtils.isNotEnabled(CallAudioState.ROUTE_EARPIECE |
-                CallAudioState.ROUTE_BLUETOOTH | CallAudioState.ROUTE_WIRED_HEADSET,
+        if (QtiCallUtils.isNotEnabled(CallAudioState.ROUTE_BLUETOOTH |
+                CallAudioState.ROUTE_WIRED_HEADSET,
                 currentAudioMode)) {
             Log.v(LOG_TAG, "enableEarpiece: Set audio route to earpiece");
             telecomAdapter.setAudioRoute(CallAudioState.ROUTE_EARPIECE);

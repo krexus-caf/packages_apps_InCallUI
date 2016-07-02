@@ -395,9 +395,13 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
             alertDialog.setNegativeButton(R.string.low_battery_convert, new OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                     Log.d(this, "displayLowBatteryAlert place Voice Call");
-                      TelecomAdapter.getInstance().continueCallWithVideoState(
-                              call, VideoProfile.STATE_AUDIO_ONLY);
+                    Log.d(this, "displayLowBatteryAlert place Voice Call");
+                    //Change the audio route to earpiece
+                    InCallAudioManager.getInstance().onModifyCallClicked(call,
+                            VideoProfile.STATE_AUDIO_ONLY);
+
+                    TelecomAdapter.getInstance().continueCallWithVideoState(
+                            call, VideoProfile.STATE_AUDIO_ONLY);
                 }
             });
 
@@ -406,8 +410,8 @@ public class InCallLowBatteryListener implements CallList.Listener, InCallDetail
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                      Log.d(this, "displayLowBatteryAlert place Video Call");
-                      TelecomAdapter.getInstance().continueCallWithVideoState(
-                              call, VideoProfile.STATE_BIDIRECTIONAL);
+                     TelecomAdapter.getInstance().continueCallWithVideoState(
+                             call, VideoProfile.STATE_BIDIRECTIONAL);
                 }
             });
         } else if (CallUtils.isActiveUnPausedVideoCall(call)) {
